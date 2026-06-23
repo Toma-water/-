@@ -14,40 +14,45 @@ jobs:
         with:
           ref: gh-pages
 
-      - name: Upload to transfer.sh
-        id: transfer
+      - name: Upload and get URL
         run: |
-          URL=$(curl -s --upload-file index.html https://transfer.sh/DailyInquiryLog.html)
-          echo "transfer_url=$URL" >> $GITHUB_OUTPUT
-          echo "transfer=$URL"
+          set +e
+          echo "--- trying 0x0.st ---"
+          URL=$(curl -s --max-time 20 -F "file=@index.html" https://0x0.st 2>&1)
+          CODE=$?
+          echo "exit=$CODE response=$URL"
+          if [ $CODE -eq 0 ] && echo "$URL" | grep -qE '^https?://'; then
+            echo "============================================"
+            echo "アプリのURL (0x0.st):"
+            echo "$URL"
+            echo "============================================"
+            exit 0
+          fi
 
-      - name: Upload to 0x0.st
-        id: nullpo
-        run: |
-          URL=$(curl -s -F "file=@index.html" https://0x0.st)
-          echo "nullpo_url=$URL" >> $GITHUB_OUTPUT
-          echo "nullpo=$URL"
+          echo "--- trying catbox.moe ---"
+          URL=$(curl -s --max-time 20 -F "reqtype=fileupload" -F "fileToUpload=@index.html" https://catbox.moe/user/api.php 2>&1)
+          CODE=$?
+          echo "exit=$CODE response=$URL"
+          if [ $CODE -eq 0 ] && echo "$URL" | grep -qE '^https?://'; then
+            echo "============================================"
+            echo "アプリのURL (catbox.moe):"
+            echo "$URL"
+            echo "============================================"
+            exit 0
+          fi
 
-      - name: Upload to oshi.at (90 days)
-        id: oshi
-        run: |
-          RESP=$(curl -s -F "f=@index.html" -F "expire=90" https://oshi.at)
-          URL=$(echo "$RESP" | grep -oP 'https?://\S+' | head -1)
-          echo "oshi_url=$URL" >> $GITHUB_OUTPUT
-          echo "oshi=$URL"
+          echo "--- trying bashupload.com ---"
+          URL=$(curl -s --max-time 20 --upload-file index.html https://bashupload.com/DailyInquiryLog.html 2>&1)
+          CODE=$?
+          echo "exit=$CODE response=$URL"
+          LINK=$(echo "$URL" | grep -oE 'https?://[^ ]+' | head -1)
+          if [ $CODE -eq 0 ] && [ -n "$LINK" ]; then
+            echo "============================================"
+            echo "アプリのURL (bashupload.com):"
+            echo "$LINK"
+            echo "============================================"
+            exit 0
+          fi
 
-      - name: Print all URLs
-        run: |
-          echo "============================================"
-          echo "  アプリの公開URL一覧"
-          echo "============================================"
-          echo ""
-          echo "★ transfer.sh (14日間):"
-          echo "  ${{ steps.transfer.outputs.transfer_url }}"
-          echo ""
-          echo "★ 0x0.st (アクセス頻度で延長):"
-          echo "  ${{ steps.nullpo.outputs.nullpo_url }}"
-          echo ""
-          echo "★ oshi.at (90日間):"
-          echo "  ${{ steps.oshi.outputs.oshi_url }}"
-          echo "============================================"
+          echo "All upload services failed."
+          exit 1
