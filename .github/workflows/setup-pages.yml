@@ -6,7 +6,6 @@ on:
 permissions:
   contents: write
   pages: write
-  administration: write
 
 jobs:
   setup:
