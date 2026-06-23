@@ -17,39 +17,50 @@ jobs:
       - name: Upload and get URL
         run: |
           set +e
-          echo "--- trying 0x0.st ---"
-          URL=$(curl -s --max-time 20 -F "file=@index.html" https://0x0.st 2>&1)
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+
+          echo "--- trying litterbox.catbox.moe (72h) ---"
+          URL=$(curl -s --max-time 30 -A "$UA" \
+            -F "reqtype=fileupload" \
+            -F "time=72h" \
+            -F "fileToUpload=@index.html" \
+            https://litterbox.catbox.moe/resources/internals/api.php 2>&1)
           CODE=$?
           echo "exit=$CODE response=$URL"
           if [ $CODE -eq 0 ] && echo "$URL" | grep -qE '^https?://'; then
             echo "============================================"
-            echo "アプリのURL (0x0.st):"
+            echo "アプリのURL (72時間有効):"
             echo "$URL"
             echo "============================================"
             exit 0
           fi
 
-          echo "--- trying catbox.moe ---"
-          URL=$(curl -s --max-time 20 -F "reqtype=fileupload" -F "fileToUpload=@index.html" https://catbox.moe/user/api.php 2>&1)
+          echo "--- trying uguu.se (24h) ---"
+          RESP=$(curl -s --max-time 30 -A "$UA" \
+            -F "files[]=@index.html;type=text/html" \
+            https://uguu.se/upload.php 2>&1)
           CODE=$?
-          echo "exit=$CODE response=$URL"
-          if [ $CODE -eq 0 ] && echo "$URL" | grep -qE '^https?://'; then
+          echo "exit=$CODE response=$RESP"
+          URL=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['files'][0]['url'])" 2>/dev/null || true)
+          if [ -n "$URL" ] && echo "$URL" | grep -qE '^https?://'; then
             echo "============================================"
-            echo "アプリのURL (catbox.moe):"
+            echo "アプリのURL (uguu.se / 24時間):"
             echo "$URL"
             echo "============================================"
             exit 0
           fi
 
-          echo "--- trying bashupload.com ---"
-          URL=$(curl -s --max-time 20 --upload-file index.html https://bashupload.com/DailyInquiryLog.html 2>&1)
+          echo "--- trying pomf.cat ---"
+          RESP=$(curl -s --max-time 30 -A "$UA" \
+            -F "files[]=@index.html;type=text/html" \
+            https://pomf.cat/upload.php 2>&1)
           CODE=$?
-          echo "exit=$CODE response=$URL"
-          LINK=$(echo "$URL" | grep -oE 'https?://[^ ]+' | head -1)
-          if [ $CODE -eq 0 ] && [ -n "$LINK" ]; then
+          echo "exit=$CODE response=$RESP"
+          URL=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['files'][0]['url'])" 2>/dev/null || true)
+          if [ -n "$URL" ] && echo "$URL" | grep -qE '^https?://'; then
             echo "============================================"
-            echo "アプリのURL (bashupload.com):"
-            echo "$LINK"
+            echo "アプリのURL (pomf.cat):"
+            echo "$URL"
             echo "============================================"
             exit 0
           fi
