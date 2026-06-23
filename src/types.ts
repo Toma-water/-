@@ -58,6 +58,7 @@ export type InquiryTheme = {
   question: string;    // 核心的な問い
   description: string;
   status: 'active' | 'paused' | 'completed';
+  completionInsight?: string;  // 完了時の腑に落ちた考え
   notes: InquiryNote[];
   createdAt: string;
   updatedAt: string;

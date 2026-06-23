@@ -20,6 +20,9 @@ export default function ThemeDetailView({
   const [description, setDescription] = useState(themeRaw?.description ?? '');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionInsight, setCompletionInsight] = useState('');
+  const [insightError, setInsightError] = useState(false);
 
   if (!themeRaw) {
     return (
@@ -65,6 +68,25 @@ export default function ThemeDetailView({
   function deleteNote(noteId: string) {
     if (!confirm('このノートを削除しますか？')) return;
     updateTheme({ notes: theme.notes.filter(n => n.id !== noteId) });
+  }
+
+  function handleStatusChange(value: InquiryTheme['status']) {
+    if (value === 'completed' && theme.status !== 'completed') {
+      setCompletionInsight('');
+      setInsightError(false);
+      setShowCompletionModal(true);
+    } else {
+      updateTheme({ status: value, ...(value !== 'completed' ? { completionInsight: undefined } : {}) });
+    }
+  }
+
+  function confirmCompletion() {
+    if (!completionInsight.trim()) {
+      setInsightError(true);
+      return;
+    }
+    updateTheme({ status: 'completed', completionInsight: completionInsight.trim() });
+    setShowCompletionModal(false);
   }
 
   function deleteTheme() {
@@ -140,7 +162,7 @@ export default function ThemeDetailView({
                 <button
                   key={s.value}
                   className={`status-btn ${theme.status === s.value ? `active-${s.value === 'active' ? 'done' : s.value === 'paused' ? 'partial' : 'doing'}` : ''}`}
-                  onClick={() => updateTheme({ status: s.value })}
+                  onClick={() => handleStatusChange(s.value)}
                 >
                   {s.label}
                 </button>
@@ -149,6 +171,16 @@ export default function ThemeDetailView({
           </div>
         )}
       </div>
+
+      {/* Completion insight */}
+      {theme.status === 'completed' && theme.completionInsight && (
+        <div className="card" style={{ borderLeft: '3px solid var(--c-primary)', background: 'var(--c-primary-bg, #eff6ff)' }}>
+          <div className="field-label" style={{ marginBottom: 6 }}>💡 腑に落ちた考え</div>
+          <div style={{ fontSize: '.92rem', color: 'var(--c-text)', whiteSpace: 'pre-wrap' }}>
+            {theme.completionInsight}
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="section-header" style={{ marginTop: 4 }}>
@@ -210,6 +242,43 @@ export default function ThemeDetailView({
           このテーマを削除
         </button>
       </div>
+
+      {/* Completion modal */}
+      {showCompletionModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowCompletionModal(false)}>
+          <div className="modal">
+            <div className="modal-title">テーマを完了にする</div>
+            <div style={{ fontSize: '.88rem', color: 'var(--c-text2)', marginBottom: 16 }}>
+              「{theme.title}」の探究を通じて得た気づきを記録します。
+            </div>
+            <div className="field">
+              <label className="field-label required">腑に落ちた考えは何か</label>
+              <textarea
+                className="field-textarea"
+                value={completionInsight}
+                onChange={e => { setCompletionInsight(e.target.value); setInsightError(false); }}
+                placeholder="この探究で最終的に理解・納得できたことを書いてください"
+                rows={5}
+                autoFocus
+                style={insightError ? { borderColor: 'var(--c-danger)' } : {}}
+              />
+              {insightError && (
+                <div style={{ color: 'var(--c-danger)', fontSize: '.82rem', marginTop: 4 }}>
+                  入力してください
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={confirmCompletion}>
+                完了にする
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowCompletionModal(false)}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
