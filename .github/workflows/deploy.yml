@@ -1,0 +1,38 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/nice-feynman-ayq4yd]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build single-file HTML
+        run: node build-singlefile.mjs
+
+      - name: Prepare gh-pages branch
+        run: |
+          cp dist-single/index.html dist-single/404.html
+          touch dist-single/.nojekyll
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist-single
+          force_orphan: true
+          commit_message: "Deploy app [skip ci]"
