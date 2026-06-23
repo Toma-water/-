@@ -1,0 +1,53 @@
+name: Publish to Public URL
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Upload to transfer.sh
+        id: transfer
+        run: |
+          URL=$(curl -s --upload-file index.html https://transfer.sh/DailyInquiryLog.html)
+          echo "transfer_url=$URL" >> $GITHUB_OUTPUT
+          echo "transfer=$URL"
+
+      - name: Upload to 0x0.st
+        id: nullpo
+        run: |
+          URL=$(curl -s -F "file=@index.html" https://0x0.st)
+          echo "nullpo_url=$URL" >> $GITHUB_OUTPUT
+          echo "nullpo=$URL"
+
+      - name: Upload to oshi.at (90 days)
+        id: oshi
+        run: |
+          RESP=$(curl -s -F "f=@index.html" -F "expire=90" https://oshi.at)
+          URL=$(echo "$RESP" | grep -oP 'https?://\S+' | head -1)
+          echo "oshi_url=$URL" >> $GITHUB_OUTPUT
+          echo "oshi=$URL"
+
+      - name: Print all URLs
+        run: |
+          echo "============================================"
+          echo "  アプリの公開URL一覧"
+          echo "============================================"
+          echo ""
+          echo "★ transfer.sh (14日間):"
+          echo "  ${{ steps.transfer.outputs.transfer_url }}"
+          echo ""
+          echo "★ 0x0.st (アクセス頻度で延長):"
+          echo "  ${{ steps.nullpo.outputs.nullpo_url }}"
+          echo ""
+          echo "★ oshi.at (90日間):"
+          echo "  ${{ steps.oshi.outputs.oshi_url }}"
+          echo "============================================"
