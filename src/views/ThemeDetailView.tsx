@@ -12,16 +12,16 @@ const STATUS_OPTIONS: { value: InquiryTheme['status']; label: string }[] = [
 export default function ThemeDetailView({
   data, updateData, themeId, onBack,
 }: SharedProps & { themeId: string; onBack: () => void }) {
-  const theme = data.themes.find(t => t.id === themeId);
+  const themeRaw = data.themes.find(t => t.id === themeId);
 
   const [editMode, setEditMode] = useState(false);
-  const [title, setTitle] = useState(theme?.title ?? '');
-  const [question, setQuestion] = useState(theme?.question ?? '');
-  const [description, setDescription] = useState(theme?.description ?? '');
+  const [title, setTitle] = useState(themeRaw?.title ?? '');
+  const [question, setQuestion] = useState(themeRaw?.question ?? '');
+  const [description, setDescription] = useState(themeRaw?.description ?? '');
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
 
-  if (!theme) {
+  if (!themeRaw) {
     return (
       <div>
         <button className="back-btn" onClick={onBack}>← 一覧に戻る</button>
@@ -29,6 +29,9 @@ export default function ThemeDetailView({
       </div>
     );
   }
+
+  // 早期returnの後なので theme は確実に存在する（クロージャ内でも型が確定）
+  const theme: InquiryTheme = themeRaw;
 
   function updateTheme(patch: Partial<InquiryTheme>) {
     updateData(d => ({
