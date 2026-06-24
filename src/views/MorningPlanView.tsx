@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SharedProps } from '../App';
 import type { Task, TaskStatus } from '../types';
-import { genId, now, formatDate, formatDateShort } from '../utils';
+import { genId, now, formatDate, formatDateShort, daysUntil, dueRemainLabel, todayDate } from '../utils';
 import { collectActiveTasks, updateTaskAnywhere, removeTaskAnywhere } from '../tasks';
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
@@ -58,8 +58,13 @@ function TaskItem({
               </span>
             )}
             {task.dueDate && (
-              <span className="badge" style={{ background: 'var(--c-border)', color: 'var(--c-text2)' }}>
-                〜{formatDateShort(task.dueDate)} まで
+              <span
+                className="badge"
+                style={daysUntil(task.dueDate, todayDate()) < 0
+                  ? { background: 'var(--c-danger-bg)', color: 'var(--c-danger)' }
+                  : { background: 'var(--c-border)', color: 'var(--c-text2)' }}
+              >
+                〜{formatDateShort(task.dueDate)}（{dueRemainLabel(task.dueDate, todayDate())}）
               </span>
             )}
           </div>
@@ -77,7 +82,7 @@ function TaskItem({
           {task.dueDate && (
             <div className="task-detail-row">
               <div className="task-detail-label">期限</div>
-              <div className="task-detail-value">{formatDateShort(task.dueDate)} まで</div>
+              <div className="task-detail-value">{formatDateShort(task.dueDate)} まで（{dueRemainLabel(task.dueDate, todayDate())}）</div>
             </div>
           )}
           <div className="task-detail-row">

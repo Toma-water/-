@@ -29,6 +29,21 @@ export function formatDateShort(date: string): string {
   return `${m}/${day}（${w}）`;
 }
 
+// fromStr から dateStr までの残り日数（同日=0、過去=マイナス）
+export function daysUntil(dateStr: string, fromStr: string): number {
+  const from = new Date(fromStr + 'T00:00:00').getTime();
+  const to = new Date(dateStr + 'T00:00:00').getTime();
+  return Math.round((to - from) / 86400000);
+}
+
+// 残り日数の表示ラベル（例: あと3日 / 今日まで / 2日超過）
+export function dueRemainLabel(dateStr: string, fromStr: string): string {
+  const n = daysUntil(dateStr, fromStr);
+  if (n > 0) return `あと${n}日`;
+  if (n === 0) return '今日まで';
+  return `${-n}日超過`;
+}
+
 export function pastDates(n: number): string[] {
   const result: string[] = [];
   for (let i = 0; i < n; i++) {
