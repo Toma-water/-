@@ -7,6 +7,7 @@ export type Task = {
   firstAction: string;          // 最初の一手
   reason?: string;
   plan?: string;                // 手順の見通し（段取り・進め方）
+  dueDate?: string;             // 期限 YYYY-MM-DD（未設定なら当日扱い）
   estimatedMinutes?: number;
   status: TaskStatus;
   actualProgress?: string;

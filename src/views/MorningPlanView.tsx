@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { SharedProps } from '../App';
 import type { Task, TaskStatus } from '../types';
-import { genId, now, formatDate } from '../utils';
+import { genId, now, formatDate, formatDateShort } from '../utils';
+import { collectActiveTasks, updateTaskAnywhere, removeTaskAnywhere } from '../tasks';
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'todo',      label: '未着手' },
@@ -31,10 +32,12 @@ function TaskBadge({ status }: { status: TaskStatus }) {
 }
 
 function TaskItem({
-  task, themes, onStatusChange, onRemove,
+  task, themes, carried, ownerDay, onStatusChange, onRemove,
 }: {
   task: Task;
   themes: { id: string; title: string }[];
+  carried?: boolean;
+  ownerDay?: string;
   onStatusChange: (status: TaskStatus) => void;
   onRemove: () => void;
 }) {
@@ -47,12 +50,36 @@ function TaskItem({
           <div className={`task-action${task.status === 'done' ? ' done' : ''}`}>
             {task.action || '（未入力）'}
           </div>
-          <TaskBadge status={task.status} />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TaskBadge status={task.status} />
+            {carried && (
+              <span className="badge" style={{ background: 'var(--c-danger-bg)', color: 'var(--c-danger)' }}>
+                ⏳ 持ち越し
+              </span>
+            )}
+            {task.dueDate && (
+              <span className="badge" style={{ background: 'var(--c-border)', color: 'var(--c-text2)' }}>
+                〜{formatDateShort(task.dueDate)} まで
+              </span>
+            )}
+          </div>
         </div>
         <span className="task-expand-icon">{expanded ? '▲' : '▼'}</span>
       </div>
       {expanded && (
         <div className="task-detail">
+          {carried && ownerDay && (
+            <div className="task-detail-row">
+              <div className="task-detail-label">登録日</div>
+              <div className="task-detail-value">{formatDateShort(ownerDay)}（未完了のため持ち越し中）</div>
+            </div>
+          )}
+          {task.dueDate && (
+            <div className="task-detail-row">
+              <div className="task-detail-label">期限</div>
+              <div className="task-detail-value">{formatDateShort(task.dueDate)} まで</div>
+            </div>
+          )}
           <div className="task-detail-row">
             <div className="task-detail-label">完了条件</div>
             <div className="task-detail-value">{task.completionCondition || '—'}</div>
@@ -109,10 +136,12 @@ function TaskItem({
 
 function TaskModal({
   themes,
+  today,
   onSave,
   onClose,
 }: {
   themes: { id: string; title: string }[];
+  today: string;
   onSave: (t: TaskFormState) => void;
   onClose: () => void;
 }) {
@@ -176,6 +205,28 @@ function TaskModal({
             onChange={e => set('estimatedMinutes', e.target.value ? Number(e.target.value) : undefined)}
             placeholder="例: 60" />
         </div>
+        <div className="field">
+          {!form.dueDate ? (
+            <button className="btn btn-outline btn-sm" type="button"
+              onClick={() => set('dueDate', today)}>
+              📅 期限を決める（基本は今日中）
+            </button>
+          ) : (
+            <>
+              <label className="field-label">期限（この日まで）</label>
+              <input className="field-input" type="date" value={form.dueDate}
+                min={today}
+                onChange={e => set('dueDate', e.target.value || undefined)} />
+              <div className="field-hint">
+                未完了なら翌日以降に持ち越し。期限が先のものほどリストの下に並びます。
+                <button className="btn btn-ghost btn-sm" type="button" style={{ marginLeft: 8 }}
+                  onClick={() => set('dueDate', undefined)}>
+                  今日中に戻す
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         {themes.length > 0 && (
           <div className="field">
             <label className="field-label">関連テーマ</label>
@@ -213,6 +264,7 @@ export default function MorningPlanView({ data, updateData, today }: SharedProps
   const [saved, setSaved] = useState(false);
 
   const tasks = plan?.tasks ?? [];
+  const visible = collectActiveTasks(data, today);
   const themes = data.themes.filter(t => t.status === 'active');
 
   function save(newTasks?: Task[]) {
@@ -252,15 +304,12 @@ export default function MorningPlanView({ data, updateData, today }: SharedProps
   }
 
   function updateTaskStatus(taskId: string, status: TaskStatus) {
-    const newTasks = tasks.map(t =>
-      t.id === taskId ? { ...t, status, updatedAt: now() } : t,
-    );
-    save(newTasks);
+    updateData(d => updateTaskAnywhere(d, taskId, { status }));
   }
 
   function removeTask(taskId: string) {
     if (!confirm('このタスクを削除しますか？')) return;
-    save(tasks.filter(t => t.id !== taskId));
+    updateData(d => removeTaskAnywhere(d, taskId));
   }
 
   return (
@@ -285,23 +334,25 @@ export default function MorningPlanView({ data, updateData, today }: SharedProps
       </div>
 
       <div className="section-header">
-        <div className="section-title">タスク ({tasks.length})</div>
+        <div className="section-title">タスク ({visible.length})</div>
         <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>＋ 追加</button>
       </div>
 
-      {tasks.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="empty">
           <div className="empty-icon">📋</div>
           <div className="empty-text">タスクがまだありません</div>
         </div>
       ) : (
-        tasks.map(t => (
+        visible.map(v => (
           <TaskItem
-            key={t.id}
-            task={t}
+            key={v.task.id}
+            task={v.task}
             themes={themes}
-            onStatusChange={s => updateTaskStatus(t.id, s)}
-            onRemove={() => removeTask(t.id)}
+            carried={v.carried}
+            ownerDay={v.ownerDay}
+            onStatusChange={s => updateTaskStatus(v.task.id, s)}
+            onRemove={() => removeTask(v.task.id)}
           />
         ))
       )}
@@ -311,7 +362,7 @@ export default function MorningPlanView({ data, updateData, today }: SharedProps
       </button>
 
       {showModal && (
-        <TaskModal themes={themes} onSave={addTask} onClose={() => setShowModal(false)} />
+        <TaskModal themes={themes} today={today} onSave={addTask} onClose={() => setShowModal(false)} />
       )}
     </div>
   );

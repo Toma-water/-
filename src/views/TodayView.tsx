@@ -1,5 +1,6 @@
 import type { SharedProps } from '../App';
 import { formatDate } from '../utils';
+import { collectActiveTasks, progressPct } from '../tasks';
 
 type Props = SharedProps & {
   onGoMorning: () => void;
@@ -12,9 +13,10 @@ export default function TodayView({ data, today, onGoMorning, onGoEvening, onGoT
   const plan   = dayLog?.morningPlan;
   const review = dayLog?.eveningReview;
 
-  const tasks = plan?.tasks ?? [];
-  const doneCount = tasks.filter(t => t.status === 'done' || t.status === 'partial').length;
-  const pct = tasks.length > 0 ? Math.round(doneCount / tasks.length * 100) : 0;
+  const tasks = collectActiveTasks(data, today).map(v => v.task);
+  const doneCount = tasks.filter(t => t.status === 'done').length;
+  const partialCount = tasks.filter(t => t.status === 'partial').length;
+  const pct = progressPct(tasks);
 
   const activeThemes = data.themes.filter(t => t.status === 'active');
 
@@ -27,11 +29,12 @@ export default function TodayView({ data, today, onGoMorning, onGoEvening, onGoT
         <div className="summary-icon">📝</div>
         <div className="summary-body">
           <div className="summary-label">朝のプラン</div>
-          {plan ? (
+          {(plan || tasks.length > 0) ? (
             <>
-              <div className="summary-main">{plan.theme || '（テーマ未設定）'}</div>
+              <div className="summary-main">{plan?.theme || (tasks.length > 0 ? '今日のタスク' : '（テーマ未設定）')}</div>
               <div className="summary-sub">
                 タスク {doneCount}/{tasks.length} 完了
+                {partialCount > 0 && <span style={{ color: 'var(--c-text3)' }}>（部分 {partialCount}）</span>}
                 {tasks.length > 0 && (
                   <span style={{ marginLeft: 8, color: pct === 100 ? 'var(--c-success)' : undefined }}>
                     {pct}%
