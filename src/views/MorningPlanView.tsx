@@ -15,7 +15,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 function emptyTask(): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
   return {
     action: '', completionCondition: '', firstAction: '',
-    reason: '', estimatedMinutes: undefined,
+    reason: '', plan: '', estimatedMinutes: undefined,
     status: 'todo', inquiryIds: [],
   };
 }
@@ -65,6 +65,12 @@ function TaskItem({
             <div className="task-detail-row">
               <div className="task-detail-label">理由</div>
               <div className="task-detail-value">{task.reason}</div>
+            </div>
+          )}
+          {task.plan && (
+            <div className="task-detail-row">
+              <div className="task-detail-label">手順の見通し</div>
+              <div className="task-detail-value" style={{ whiteSpace: 'pre-wrap' }}>{task.plan}</div>
             </div>
           )}
           {task.estimatedMinutes && (
@@ -155,6 +161,13 @@ function TaskModal({
           <input className="field-input" value={form.reason ?? ''}
             onChange={e => set('reason', e.target.value)}
             placeholder="例: 締め切りが明日なので" />
+        </div>
+        <div className="field">
+          <label className="field-label">手順の見通し（段取り）</label>
+          <textarea className="field-textarea" value={form.plan ?? ''}
+            onChange={e => set('plan', e.target.value)}
+            placeholder={'この時間で何をどの順でやるかのイメージ\n例:\n① アウトラインを箇条書き\n② 各見出しを2〜3行で埋める\n③ 通して読み直して整える'} />
+          <div className="field-hint">この時間にやることの見通し・プランを立てる</div>
         </div>
         <div className="field">
           <label className="field-label">見積もり時間（分）</label>

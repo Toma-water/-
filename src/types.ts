@@ -6,6 +6,7 @@ export type Task = {
   completionCondition: string;  // 完了条件
   firstAction: string;          // 最初の一手
   reason?: string;
+  plan?: string;                // 手順の見通し（段取り・進め方）
   estimatedMinutes?: number;
   status: TaskStatus;
   actualProgress?: string;
