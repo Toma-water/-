@@ -116,67 +116,86 @@ def make_taper():
 
 
 # =====================================================================
-# 案3: collapsible (中子 + 3分割セグメント)
+# 案3 (改): keystone collapsible
+#   - 外周は隙間ゼロで突き合わせる真円筒φ90(真空引き対応)
+#   - 中央テーパー穴にセンターキー(中子)を入れ、内側から支えて
+#     真空圧で潰れないようにする
+#   - 抜き手順: センターキー上抜き → キーストーン上抜き →
+#     残り3セグメントを内側へ寄せて抜く
 # =====================================================================
+BORE_R0   = 12.0          # 中心テーパー穴 下半径
+BORE_R1   = 20.0          # 中心テーパー穴 上半径
+KEY_CL    = 0.20          # センターキーのはめあいクリアランス(片側)
+KEYSTONE  = 60.0          # キーストーンの開き角(度)
+
+
 def _bore_tube():
-    """外径90straight・中心テーパー穴(下r10 -> 上r20)のチューブ"""
+    """外径φ90 straight・中心テーパー穴(下BORE_R0 -> 上BORE_R1)のチューブ"""
     prof = [
-        [10, 0],
-        [R_OUT, 0],
-        [R_OUT, H_MOLD],
-        [20, H_MOLD],
-        [10, 0],          # 軸に接しない環状断面なので明示的に閉じる
+        [BORE_R0, 0],
+        [R_OUT,   0],
+        [R_OUT,   H_MOLD],
+        [BORE_R1, H_MOLD],
+        [BORE_R0, 0],          # 軸に接しない環状断面なので明示的に閉じる
     ]
     return revolve(prof)
 
 
 def _wedge(angle0_deg, angle1_deg, r=R_OUT + 6, h=H_MOLD + 2):
-    """原点中心の扇形プリズム(z=0..h)"""
+    """原点中心の扇形プリズム(z=0..h)。隙間ゼロで突き合わせる用。"""
     pts = [[0, 0]]
-    for a in np.linspace(np.deg2rad(angle0_deg), np.deg2rad(angle1_deg), 48):
+    for a in np.linspace(np.deg2rad(angle0_deg), np.deg2rad(angle1_deg), 64):
         pts.append([r * np.cos(a), r * np.sin(a)])
     poly = Polygon(pts)
     return trimesh.creation.extrude_polygon(poly, height=h)
 
 
-def make_collapsible_segments(n=3, gap_deg=0.9):
+def _cut(tube, a0, a1):
+    s = trimesh.boolean.intersection([tube, _wedge(a0, a1)])
+    s.merge_vertices()
+    return s
+
+
+def make_collapsible_parts():
+    """keystone + 3 segments を返す(全て隙間ゼロ・合計360°)"""
     tube = _bore_tube()
-    seg_span = 360.0 / n
-    segs = []
-    for i in range(n):
-        a0 = i * seg_span + gap_deg
-        a1 = (i + 1) * seg_span - gap_deg
-        w = _wedge(a0, a1)
-        s = trimesh.boolean.intersection([tube, w])
-        s.merge_vertices()
-        segs.append(s)
-    return segs
+    half = KEYSTONE / 2.0           # 30
+    # キーストーン: -30..+30
+    keystone = _cut(tube, -half, half)
+    # 引抜き用 φ5 穴(上端トリミング代の範囲内, z=H_MOLD-18..H_MOLD)
+    hole = trimesh.creation.cylinder(radius=2.5, height=22, sections=48)
+    hole.apply_translation([32 * np.cos(0), 32 * np.sin(0), H_MOLD - 6])
+    keystone = trimesh.boolean.difference([keystone, hole]); keystone.merge_vertices()
+    # 残り300°を3等分(100°ずつ)
+    rest0, rest1 = half, 360.0 - half      # 30 .. 330
+    span = (rest1 - rest0) / 3.0           # 100
+    segs = [_cut(tube, rest0 + i * span, rest0 + (i + 1) * span) for i in range(3)]
+    return keystone, segs
 
 
 def make_collapsible_key():
-    """中心キー: 下r9.7 -> 上r19.7 (クリアランス0.3) + 引抜きノブ"""
-    cl = 0.3
+    """センターキー(中子): テーパー嵌合 + 引抜きノブ。真空圧をこれが受ける。"""
     prof = [
-        [0,        0],
-        [10 - cl,  0],
-        [20 - cl,  H_MOLD],
-        [8,        H_MOLD],
-        [8,        H_MOLD + 15],     # ノブ
-        [0,        H_MOLD + 15],
+        [0,                0],
+        [BORE_R0 - KEY_CL, 0],
+        [BORE_R1 - KEY_CL, H_MOLD],
+        [8,                H_MOLD],
+        [8,                H_MOLD + 18],     # 引抜きノブ
+        [0,                H_MOLD + 18],
     ]
     return revolve(prof)
 
 
 def make_collapsible_base():
-    """セグメント位置決め用ベースプレート(外周リップ + 中心ザグリ)"""
+    """位置決めベースプレート: 外周リップでセグメント底を真円に揃える + 中心座"""
     prof = [
         [0,        0],
-        [R_OUT+3,  0],          # 外径96
-        [R_OUT+3,  8],          # 外周リップ(セグメント底の位置決め)
+        [R_OUT+3,  0],          # 外径φ96
+        [R_OUT+3,  8],          # 外周リップ(高さ8: セグメント底外周を保持)
         [R_OUT,    8],
-        [R_OUT,    5],          # プレート上面 z5
-        [10,       5],
-        [10,       4],          # 中心 1mm ザグリ(キー底の座)
+        [R_OUT,    5],          # プレート上面 z5(ここにセグメントが立つ)
+        [BORE_R0,  5],
+        [BORE_R0,  4],          # 中心 1mm ザグリ(キー底の座)
         [0,        4],
     ]
     return revolve(prof)
@@ -191,8 +210,10 @@ if __name__ == "__main__":
     print("[案2] taper")
     save(make_taper(), "2_taper_mandrel.stl")
 
-    print("[案3] collapsible")
-    for i, s in enumerate(make_collapsible_segments(), 1):
+    print("[案3] keystone collapsible (隙間ゼロ・真円筒・真空対応)")
+    keystone, segs = make_collapsible_parts()
+    save(keystone, "3_collapsible_keystone.stl")
+    for i, s in enumerate(segs, 1):
         save(s, f"3_collapsible_segment_{i}of3.stl")
     save(make_collapsible_key(),  "3_collapsible_center_key.stl")
     save(make_collapsible_base(), "3_collapsible_base_plate.stl")

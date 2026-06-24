@@ -47,15 +47,17 @@ def single(name, color):
 def assembly():
     cols = [(0.85,0.35,0.30),(0.30,0.55,0.85),(0.35,0.75,0.45)]
     segs = [trimesh.load(os.path.join(STL, f"3_collapsible_segment_{i}of3.stl")) for i in (1,2,3)]
+    keystone = trimesh.load(os.path.join(STL, "3_collapsible_keystone.stl"))
     key  = trimesh.load(os.path.join(STL, "3_collapsible_center_key.stl"))
     base = trimesh.load(os.path.join(STL, "3_collapsible_base_plate.stl"))
     base.apply_translation([0,0,-8])
     fig = plt.figure(figsize=(6,6))
     ax = fig.add_subplot(111, projection="3d")
     for s,c in zip(segs, cols): add_mesh(ax, s, c, 0.92)
+    add_mesh(ax, keystone, (0.93,0.55,0.20), 0.95)
     add_mesh(ax, key, (0.95,0.8,0.25), 0.95)
     add_mesh(ax, base, (0.6,0.6,0.6), 0.5)
-    set_box(ax, segs+[key])
+    set_box(ax, segs+[keystone, key])
     ax.set_title("案3 collapsible 組立(キー+3分割+ベース)", fontsize=9)
     out = os.path.join(HERE, "preview_3_collapsible_assembly.png")
     fig.tight_layout(); fig.savefig(out, dpi=120); plt.close(fig)
