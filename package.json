@@ -11,9 +11,11 @@
     "build": "node build.mjs",
     "build:single": "node build-singlefile.mjs",
     "serve": "node serve-dist.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "novel": "node novel-pipeline/cli.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.109.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
