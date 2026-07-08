@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""ノーズコーン用 スナップ嵌合バンド(受け/攻め) + 磁石タブ のSTL生成。
+"""ノーズコーン用 スナップ嵌合バンド(受け/攻め) のSTL生成。
+
+(磁石式は generate_magnet_band.py に分離した。)
 
 v1 (generate_seal_lip.py) の改良版。
 
@@ -56,15 +58,6 @@ BEAD_RAMP = 3.0     # 区間端のなめらかな立ち上がり長
 M_OUTER = F_INNER + CLEAR            # 舌の外面 u=2.4
 M_INNER = M_OUTER + TONGUE_T         # 舌の内面 u=3.8
 G_FLOOR = F_INNER - GROOVE_D         # 溝底 u=1.8
-
-# ---------------- 磁石タブ パラメータ (mm) ----------------
-TAB_W = 24.0        # 幅(合わせ目に沿う方向)
-TAB_D = 12.0        # 上面の奥行き(内側への張り出し)
-TAB_TOP = -3.0      # 上面の高さ(合わせ面基準) = 磁石厚3mmでツライチ
-TAB_BOT = -12.0     # 下端
-TAB_DRAFT = 1.7     # 背面(接着面)のドラフト
-FENCE_W = 1.0       # 縁の幅
-FENCE_H = 0.8       # 縁の高さ
 
 
 def male_profile(w):
@@ -241,42 +234,6 @@ def make_coupon(profile_fn, window, fname, flip_top=None, zshift=0.0):
     write_stl(OUT_DIR / fname, tris, fname.replace(".stl", ""))
 
 
-def magnet_tab_profile(fence):
-    """磁石タブ断面 (d=シェルからの奥行き, z)。fence=Trueで上面+0.8mmの縁。"""
-    top = TAB_TOP + (FENCE_H if fence else 0.0)
-    return np.array([
-        (0.0, top),
-        (TAB_D, top),
-        (TAB_D, -4.5),
-        (3.2, TAB_BOT),
-        (TAB_DRAFT, TAB_BOT),
-    ])
-
-
-def make_magnet_tab():
-    eps = 0.02
-    ws = np.array([0.0, FENCE_W, FENCE_W + eps,
-                   TAB_W - FENCE_W - eps, TAB_W - FENCE_W, TAB_W])
-    fences = [True, True, False, False, True, True]
-    path = np.stack([ws, np.zeros(len(ws))], axis=1)
-    normals = np.tile([[0.0, -1.0]], (len(ws), 1))
-    tris = sweep_var(path, normals,
-                     lambda f: magnet_tab_profile(bool(f)),
-                     np.array(fences, dtype=float))
-    tris, vol = orient_outward(tris)
-    # 印刷向き: 端面を下にして立てる (w軸→Z, d→X, z→Y)
-    out = np.empty_like(tris)
-    out[..., 0] = tris[..., 1]            # d → X
-    out[..., 1] = tris[..., 2] - TAB_BOT  # z → Y (正に平行移動)
-    out[..., 2] = tris[..., 0]            # w → Z
-    out = out[:, ::-1, :]                 # 軸入替の鏡映を打ち消す
-    out, vol = orient_outward(out)
-    check_mesh(out, "magnet_tab")
-    mn, mx = out.reshape(-1, 3).min(0), out.reshape(-1, 3).max(0)
-    print(f"magnet tab: size {np.round(mx-mn,2)}  vol {vol/1000:.1f} cm^3")
-    write_stl(OUT_DIR / "nosecone_magnet_tab.stl", out, "nosecone magnet tab")
-
-
 def main():
     OUT_DIR.mkdir(exist_ok=True)
     # 受け(シェルA側): 印刷向き=そのまま底上げ (深い側が下)
@@ -290,7 +247,8 @@ def main():
                 "nosecone_snap_coupon_female.stl", zshift=GLUE_H)
     make_coupon(male_profile, 1.0,
                 "nosecone_snap_coupon_male.stl", flip_top=GLUE_H)
-    make_magnet_tab()
+    # 磁石式は generate_magnet_band.py に移行(バンド本体一体型)。
+    # 旧・独立タブ make_magnet_tab() は廃止した。
 
 
 if __name__ == "__main__":
