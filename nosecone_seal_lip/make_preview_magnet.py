@@ -90,8 +90,8 @@ ax3.axhline(g.GLUE_H, color="k", ls=":", lw=0.9)
 ax3.axvline(0, color=YELLOW, ls="--", lw=1.3)
 ax3.annotate("合わせ面(z=8)フラット\n(気密が要るならスポンジテープ)",
              (2.2, g.GLUE_H + 0.4), fontsize=9)
-ax3.annotate("M3ネジ Φ3.4貫通穴\n(シェルと共締め, z=4, 6か所)",
-             (1.4, g.HOLE_Z), fontsize=9, color=BLUE, xytext=(3.6, 3.2),
+ax3.annotate(f"M3ネジ Φ3.4貫通穴\n(シェルと共締め, z={g.HOLE_Z}, 6か所)",
+             (1.4, g.HOLE_Z), fontsize=9, color=BLUE, xytext=(3.8, 5.0),
              arrowprops=dict(arrowstyle="->", lw=0.9, color=BLUE))
 ax3.annotate("GFRPシェル\n(このハーフ)", (-1.4, 2.0), ha="right", fontsize=9)
 ax3.annotate("相手側シェル", (-1.4, 10.0), ha="right", fontsize=9)
