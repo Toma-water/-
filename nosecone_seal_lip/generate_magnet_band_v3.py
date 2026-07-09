@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""磁石バンド v3: 新しいノーズコーン外形(曲線のみ) + M3ネジ穴。CAD(STEP)+STL出力。
+"""リムバンド v3: 新しいノーズコーン外形(曲線のみ) + M3ネジ穴。CAD(STEP)+STL出力。
 
 ユーザー提供の新スケッチに従う:
 - リム外形 = 1/4楕円の曲線のみ(直線スカート無し)。高さ135.60 × 半幅45.60。
   バンドが沿うのはこの曲線を左右対称に合わせた半楕円(先端で滑らかにつながる)。
 - 片側の半割にだけ取り付ける。段差(リップ)無し = 合わせ面はフラット。
 - 固定はM3ネジ → Φ3.4の貫通穴を壁に6か所(くぎ固定は廃止)。
-- 磁石座(内向きの小さな突起)5か所は前版と同じ考え方:
-  座の上面 = 合わせ面-3mm。厚さ3mmの磁石を貼ると磁石面がツライチ。
-  相手側の半割には磁石(極性逆) or 鉄ワッシャーを直接接着する。
+- 磁石座は付けない(ユーザー指示で削除。BOSS_FRACSを空にしてある。
+  復活させたい場合は弧長分率を入れて再生成)。
 
 cadqueryでソリッドを構築し、同一モデルから STEP(CAD) と STL を出力する。
 出力座標系: ノーズコーン軸=+Y(先端が+Y)。Z=0が印刷ベッド面、Z=8が合わせ面。
@@ -34,7 +33,7 @@ PAD_W = MAG_POCKET + 2 * RIM_TH   # 座の幅(接線方向) 13.2
 PAD_D = MAG_POCKET + 2 * RIM_TH   # 座の奥行(内向き) 13.2
 PAD_TOP = GLUE_H - MAG_T          # 座の上面 z=5
 B_START = INNER - OVERLAP         # 座の付け根 u=1.0
-BOSS_FRACS = [0.10, 0.30, 0.50, 0.70, 0.90]  # 弧長方向の配置(0.5=先端)
+BOSS_FRACS = []  # 磁石座は不要(指示により削除)。必要なら例: [0.1,0.3,0.5,0.7,0.9]
 # ---------------- ネジ穴パラメータ (mm) ----------------
 HOLE_D = 3.4       # M3通し穴(3.2〜3.4指定の上限側)
 HOLE_Z = 4.0       # 穴中心の高さ(接着ゾーン中央)
@@ -130,12 +129,12 @@ def main():
     out = Path(__file__).resolve().parent / "output"
     out.mkdir(exist_ok=True)
     band = build()
-    cq.exporters.export(band, str(out / "nosecone_magnet_band_v3.step"))
+    cq.exporters.export(band, str(out / "nosecone_rim_band_v3.step"))
     cq.exporters.export(
-        band, str(out / "nosecone_magnet_band_v3.stl"),
+        band, str(out / "nosecone_rim_band_v3.stl"),
         tolerance=0.02, angularTolerance=0.15)
-    print("wrote", out / "nosecone_magnet_band_v3.step")
-    print("wrote", out / "nosecone_magnet_band_v3.stl")
+    print("wrote", out / "nosecone_rim_band_v3.step")
+    print("wrote", out / "nosecone_rim_band_v3.stl")
 
 
 if __name__ == "__main__":
