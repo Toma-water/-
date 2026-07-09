@@ -129,12 +129,17 @@ def main():
     out = Path(__file__).resolve().parent / "output"
     out.mkdir(exist_ok=True)
     band = build()
-    cq.exporters.export(band, str(out / "nosecone_rim_band_v3.step"))
+    # CADは2つの拡張子で出力(環境の関連付け差を吸収):
+    #   .step / .stp = 同一のSTEP(AP214)  ,  .stl = 印刷用メッシュ
+    cq.exporters.export(band, str(out / "nosecone_rim_band_v3.step"),
+                        exportType="STEP")
+    cq.exporters.export(band, str(out / "nosecone_rim_band_v3.stp"),
+                        exportType="STEP")
     cq.exporters.export(
         band, str(out / "nosecone_rim_band_v3.stl"),
         tolerance=0.02, angularTolerance=0.15)
-    print("wrote", out / "nosecone_rim_band_v3.step")
-    print("wrote", out / "nosecone_rim_band_v3.stl")
+    for ext in ("step", "stp", "stl"):
+        print("wrote", out / f"nosecone_rim_band_v3.{ext}")
 
 
 if __name__ == "__main__":
