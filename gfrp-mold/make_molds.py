@@ -20,8 +20,8 @@ from shapely.geometry import Polygon
 D_INNER   = 90.0          # GFRP 内径 = 型外径
 R_OUT     = D_INNER / 2   # 45.0
 H_BODY    = 60.0          # 完成品狙い高さ
-H_MARGIN  = 40.0          # 余裕(上端トリミング代)
-H_MOLD    = 100.0         # 型高さ = 100mm (高さ方向100mm指定)
+H_MARGIN  = 50.0          # 余裕(上端トリミング代)
+H_MOLD    = 110.0         # 型高さ = 110mm (高さ方向110mm指定)
 SECT      = 256           # 円周分割(滑らかさ)
 
 OUT = os.path.join(os.path.dirname(__file__), "stl")
