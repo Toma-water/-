@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  :root { --line:#e0e0e0; --muted:#5f6368; --accent:#1a73e8; --bg:#fff; --fg:#202124; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    font-size: 13px; color: var(--fg); background: var(--bg);
+    margin: 0; padding: 12px;
+  }
+  .status { font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line);
+            padding-bottom: 8px; margin-bottom: 10px; line-height: 1.5; }
+  .status b { color: var(--fg); font-weight: 600; }
+  .warn { color: #c5221f; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tab { flex: 1; padding: 6px 0; text-align: center; border: 1px solid var(--line);
+         border-radius: 4px; cursor: pointer; background: #fff; font-size: 12px; }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .chip { font-size: 11px; padding: 3px 8px; border: 1px solid var(--line);
+          border-radius: 12px; cursor: pointer; background: #f8f9fa; color: var(--muted); }
+  .chip:hover { background: #e8f0fe; color: var(--accent); border-color: #d2e3fc; }
+
+  textarea { width: 100%; min-height: 62px; padding: 7px; font-size: 13px; font-family: inherit;
+             border: 1px solid var(--line); border-radius: 4px; resize: vertical; }
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  button.go { width: 100%; margin-top: 8px; padding: 9px; background: var(--accent);
+              color: #fff; border: 0; border-radius: 4px; font-size: 13px; font-weight: 600;
+              cursor: pointer; }
+  button.go:disabled { background: #bdc1c6; cursor: default; }
+
+  #out { margin-top: 12px; padding: 9px; border: 1px solid var(--line); border-radius: 4px;
+         background: #fafafa; white-space: pre-wrap; line-height: 1.75; font-size: 13px;
+         max-height: 46vh; overflow-y: auto; display: none; }
+  #out.err { background: #fce8e6; border-color: #f5c6c2; color: #c5221f; white-space: normal; }
+
+  .acts { display: none; gap: 4px; margin-top: 8px; }
+  .acts button { flex: 1; padding: 6px 2px; font-size: 11px; border: 1px solid var(--line);
+                 background: #fff; border-radius: 4px; cursor: pointer; }
+  .acts button:hover { background: #f1f3f4; }
+
+  .spin { display: none; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="status" id="status">読み込み中…</div>
+
+<div class="tabs">
+  <div class="tab on" data-mode="critique">講評</div>
+  <div class="tab"    data-mode="rewrite">リライト</div>
+  <div class="tab"    data-mode="continue">続き</div>
+  <div class="tab"    data-mode="chat">相談</div>
+</div>
+
+<div class="presets" id="presets"></div>
+
+<textarea id="inst" placeholder="指示を書く（空でも可）"></textarea>
+<button class="go" id="go">実行</button>
+<div class="note" id="hint"></div>
+
+<div class="spin" id="spin">考えています…（20〜60秒かかります）</div>
+<div id="out"></div>
+<div class="acts" id="acts">
+  <button id="rep">選択範囲を置換</button>
+  <button id="ins">カーソルに挿入</button>
+  <button id="cpy">コピー</button>
+</div>
+
+<script>
+  var mode = 'critique';
+
+  var PRESETS = {
+    critique: ['テンポが悪い箇所', '説明くさい地の文', 'キャラがぶれていないか', '設定との矛盾', '引きが弱くないか'],
+    rewrite:  ['もっと簡潔に', '感情を抑えた文体で', '情景描写を足す', '説明を削って行動で見せる', '会話のテンポを上げる'],
+    continue: ['この場面を締める', '次の場面へ繋ぐ', '会話を続ける'],
+    chat:     ['展開案を3つ', 'このキャラなら何と言うか', 'ここからの構成を整理して']
+  };
+
+  var HINTS = {
+    critique: '本文を選択してから実行してください。',
+    rewrite:  '書き直したい範囲を選択してから実行してください。',
+    continue: '続きを書き出したい位置にカーソルを置くか、直前を選択してください。',
+    chat:     '選択は任意。原稿全体と設定資料を読んだうえで答えます。'
+  };
+
+  function drawPresets() {
+    var box = document.getElementById('presets');
+    box.innerHTML = '';
+    PRESETS[mode].forEach(function (p) {
+      var c = document.createElement('div');
+      c.className = 'chip';
+      c.textContent = p;
+      c.onclick = function () {
+        var t = document.getElementById('inst');
+        t.value = t.value ? t.value + '\n' + p : p;
+        t.focus();
+      };
+      box.appendChild(c);
+    });
+    document.getElementById('hint').textContent = HINTS[mode];
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
+    tab.onclick = function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+        t.classList.remove('on');
+      });
+      tab.classList.add('on');
+      mode = tab.getAttribute('data-mode');
+      drawPresets();
+    };
+  });
+
+  function busy(on) {
+    document.getElementById('go').disabled = on;
+    document.getElementById('spin').style.display = on ? 'block' : 'none';
+    if (on) {
+      document.getElementById('out').style.display = 'none';
+      document.getElementById('acts').style.display = 'none';
+    }
+  }
+
+  function show(text, isError) {
+    var out = document.getElementById('out');
+    out.textContent = text;
+    out.className = isError ? 'err' : '';
+    out.style.display = 'block';
+    document.getElementById('acts').style.display = isError ? 'none' : 'flex';
+  }
+
+  document.getElementById('go').onclick = function () {
+    busy(true);
+    google.script.run
+      .withSuccessHandler(function (r) {
+        busy(false);
+        show(r.text + (r.truncated ? '\n\n（長さの上限で途中までです。範囲を狭めて再実行してください）' : ''), false);
+      })
+      .withFailureHandler(function (e) {
+        busy(false);
+        show(e.message || String(e), true);
+      })
+      .ask(mode, document.getElementById('inst').value);
+  };
+
+  document.getElementById('rep').onclick = function () {
+    var t = document.getElementById('out').textContent;
+    google.script.run
+      .withFailureHandler(function (e) { show(e.message || String(e), true); })
+      .replaceSelection(t);
+  };
+
+  document.getElementById('ins').onclick = function () {
+    var t = document.getElementById('out').textContent;
+    google.script.run
+      .withFailureHandler(function (e) { show(e.message || String(e), true); })
+      .insertAtCursor(t);
+  };
+
+  document.getElementById('cpy').onclick = function () {
+    var t = document.getElementById('out').textContent;
+    navigator.clipboard.writeText(t).then(function () {
+      var b = document.getElementById('cpy');
+      var old = b.textContent;
+      b.textContent = 'コピーしました';
+      setTimeout(function () { b.textContent = old; }, 1200);
+    });
+  };
+
+  google.script.run.withSuccessHandler(function (s) {
+    var el = document.getElementById('status');
+    if (!s.hasKey) {
+      el.innerHTML = '<span class="warn">APIキーが未設定です。<br>メニューの「Claude ▸ APIキーを設定」から登録してください。</span>';
+      document.getElementById('go').disabled = true;
+      return;
+    }
+    el.innerHTML =
+      'モデル: <b>' + s.model + '</b><br>' +
+      '設定資料: <b>' + (s.settingsName || '未設定') + '</b>';
+  }).getStatus();
+
+  drawPresets();
+</script>
+</body>
+</html>
